@@ -57,7 +57,8 @@ API for scoring model
 If we do not specify options in command line - they are taken by default:
 
 port = 8080
-log path = stdout
+
+log path -> stdout
 
 to be continued...
 
