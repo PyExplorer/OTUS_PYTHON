@@ -65,11 +65,12 @@ class Field(object):
 
     def validate(self, value):
         """ Basic validation """
+        if value in self.empty_values and not self.nullable:
+            raise ValidationError(self.error_messages['nullable'])
+
         if value in self.empty_values and self.required:
             raise ValidationError(self.error_messages['required'])
 
-        if value in self.empty_values and not self.nullable:
-            raise ValidationError(self.error_messages['nullable'])
 
     def clean(self, value):
         """
@@ -247,6 +248,7 @@ class GenderField(Field):
             return ''
         if value not in GENDERS:
             raise ValidationError(self.error_messages['gender'])
+        return value
 
 
 class ClientIDsField(Field):
