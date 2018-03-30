@@ -3,6 +3,7 @@
 
 import json
 import logging
+import hashlib
 import uuid
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime
@@ -336,16 +337,16 @@ class MethodRequest(Request):
 
 
 def check_auth(request):
-    # if request.is_admin:
-    #     digest = hashlib.sha512(datetime.now().strftime(
-    #         "%Y%m%d%H") + ADMIN_SALT).hexdigest()
-    # else:
-    #     digest = hashlib.sha512(
-    #         request.account + request.login + SALT).hexdigest()
-    # if digest == request.token:
-    #     return True
-    # return False
-    return True
+    if request.is_admin:
+        digest = hashlib.sha512(datetime.now().strftime(
+            "%Y%m%d%H") + ADMIN_SALT).hexdigest()
+    else:
+        digest = hashlib.sha512(
+            request.account + request.login + SALT).hexdigest()
+    if digest == request.token:
+        return True
+    return False
+
 
 
 def method_handler(request, ctx, store):
