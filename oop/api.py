@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import abc
-import six
 import json
-from datetime import datetime
 import logging
-import hashlib
 import uuid
-from optparse import OptionParser
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-from scoring import get_interests, get_score
+from datetime import datetime
+from optparse import OptionParser
+
+import six
 from dateutil.relativedelta import relativedelta
+
+from scoring import get_interests, get_score
 
 SALT = "Otus"
 ADMIN_LOGIN = "admin"
@@ -43,7 +43,6 @@ EMPTY_VALUES = (None, '', [], (), {})
 
 class Field(object):
     default_error_messages = {
-        'required': 'This field is required.',
         'nullable': 'This field must not be an empty.'
     }
 
@@ -68,10 +67,6 @@ class Field(object):
         if value in self.empty_values and not self.nullable:
             raise ValidationError(self.error_messages['nullable'])
 
-        if value in self.empty_values and self.required:
-            raise ValidationError(self.error_messages['required'])
-
-
     def clean(self, value):
         """
         Validate the given value and return its "cleaned" value as an
@@ -82,7 +77,11 @@ class Field(object):
         return value
 
 
-class BaseForm(object):
+class BaseRequest(object):
+    default_error_messages = {
+        'required': 'This field <{}> is required.',
+    }
+
     def __init__(self, data=None):
         self._errors = {}
         self.data = {} if data is None else data
@@ -100,14 +99,22 @@ class BaseForm(object):
 
     @property
     def errors(self):
-        """Return errors for the data provided for the form."""
+        """Return errors for the data provided for the request."""
         self._clean_fields()
-        self._clean_form()
+        self._clean_request()
         return self._errors
 
     def is_valid(self):
-        """Return True if the form has no errors, or False otherwise."""
+        """Return True if the request has no errors, or False otherwise."""
         return not self.errors
+
+    def _validate(self):
+        """ Basic validation for required fields """
+        for field in self.base_fields:
+            if field[1].required and field not in self.fields:
+                raise ValidationError(
+                    self.default_error_messages['required'].format(field[0])
+                )
 
     def _clean_fields(self):
         for name, field in self.fields:
@@ -117,14 +124,15 @@ class BaseForm(object):
             except ValidationError as e:
                 self._errors[name] = e.message
 
-    def _clean_form(self):
+    def _clean_request(self):
         try:
+            self._validate()
             self.clean()
         except ValidationError as e:
             self._errors[self.__class__.__name__] = e.message
 
     def clean(self):
-        """ Implemented in a form """
+        """ Implemented in a request """
         pass
 
 
@@ -145,7 +153,7 @@ class DeclarativeFieldsMetaclass(type):
         return new_class
 
 
-class Form(six.with_metaclass(DeclarativeFieldsMetaclass, BaseForm)):
+class Request(six.with_metaclass(DeclarativeFieldsMetaclass, BaseRequest)):
     "A collection of Fields, plus their associated data."
 
 
@@ -198,7 +206,7 @@ class EmailField(CharField):
 class PhoneField(Field):
     default_error_messages = {
         'length': "Invalid length. Must be 11",
-        'start7': "Invalid format. Must start with 7",
+        'start_7': "Invalid format. Must start with 7",
     }
 
     def prepare_value(self, value):
@@ -207,7 +215,7 @@ class PhoneField(Field):
         if len(str(value)) != 11:
             raise ValidationError(self.error_messages['length'])
         if not str(value).startswith('7'):
-            raise ValidationError(self.error_messages['start7'])
+            raise ValidationError(self.error_messages['start_7'])
         return value
 
 
@@ -265,11 +273,11 @@ class ClientIDsField(Field):
         return value
 
 
-class ClientsInterestsRequest(Form):
-    client_ids = ClientIDsField()
+class ClientsInterestsRequest(Request):
+    client_ids = ClientIDsField(required=True)
     date = DateField(required=False, nullable=True)
 
-    def get_response(self, ctx, store):
+    def get_response(self, ctx, store, is_admin=False):
         response = {}
         for client in self.client_ids:
             response[str(client)] = get_interests(store, '')
@@ -277,7 +285,7 @@ class ClientsInterestsRequest(Form):
         return response, OK
 
 
-class OnlineScoreRequest(Form):
+class OnlineScoreRequest(Request):
     first_name = CharField(required=False, nullable=True)
     last_name = CharField(required=False, nullable=True)
     email = EmailField(required=False, nullable=True)
@@ -304,7 +312,7 @@ class OnlineScoreRequest(Form):
                 ('gender', 'birthday')
         )
         for one_set in validate_set:
-            if all(self.data[name] not in EMPTY_VALUES and
+            if all(self.data.get(name) not in EMPTY_VALUES and
                    name not in self._errors for name in one_set
                    ):
                 return
@@ -315,7 +323,7 @@ class OnlineScoreRequest(Form):
         raise ValidationError(error_messages)
 
 
-class MethodRequest(Form):
+class MethodRequest(Request):
     account = CharField(required=False, nullable=True)
     login = CharField(required=True, nullable=True)
     token = CharField(required=True, nullable=True)
@@ -328,18 +336,23 @@ class MethodRequest(Form):
 
 
 def check_auth(request):
-    if request.is_admin:
-        digest = hashlib.sha512(datetime.now().strftime(
-            "%Y%m%d%H") + ADMIN_SALT).hexdigest()
-    else:
-        digest = hashlib.sha512(
-            request.account + request.login + SALT).hexdigest()
-    if digest == request.token:
-        return True
-    return False
+    # if request.is_admin:
+    #     digest = hashlib.sha512(datetime.now().strftime(
+    #         "%Y%m%d%H") + ADMIN_SALT).hexdigest()
+    # else:
+    #     digest = hashlib.sha512(
+    #         request.account + request.login + SALT).hexdigest()
+    # if digest == request.token:
+    #     return True
+    # return False
+    return True
 
 
 def method_handler(request, ctx, store):
+    handlers = {
+        'clients_interests': ClientsInterestsRequest,
+        'online_score': OnlineScoreRequest
+    }
 
     method_request = MethodRequest(request["body"])
     if not method_request.is_valid():
@@ -348,14 +361,8 @@ def method_handler(request, ctx, store):
     if not check_auth(method_request):
         return ERRORS[FORBIDDEN], FORBIDDEN
 
-    if 'clients_interests' in method_request.method:
-        handler = ClientsInterestsRequest(method_request.arguments)
-        if handler.is_valid():
-            return handler.get_response(ctx, store)
-        return handler.errors, INVALID_REQUEST
-
-    if 'online_score' in method_request.method:
-        handler = OnlineScoreRequest(method_request.arguments)
+    if method_request.method in handlers:
+        handler = handlers[method_request.method](method_request.arguments)
         if handler.is_valid():
             return handler.get_response(ctx, store, method_request.is_admin)
         return handler.errors, INVALID_REQUEST
