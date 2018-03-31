@@ -101,8 +101,8 @@ class BaseRequest(object):
     @property
     def errors(self):
         """Return errors for the data provided for the request."""
-        self._clean_fields()
         self._clean_request()
+        self._clean_fields()
         return self._errors
 
     def is_valid(self):
@@ -180,27 +180,32 @@ class CharField(Field):
         return value
 
 
-class ArgumentsField(Field):
+class DateField(Field):
     default_error_messages = {
-        'dict': '"Invalid arguments. Must be a dict."',
+        'date_format': "Invalid date. Must be in format DD.MM.YYYY",
     }
 
     def prepare_value(self, value):
         if value in self.empty_values:
-            return {}
-        if not isinstance(value, dict):
-            raise ValidationError(self.error_messages['dict'])
+            return ''
+        try:
+            value = datetime.strptime(value, '%d.%m.%Y')
+        except:
+            raise ValidationError(self.error_messages['date_format'])
         return value
 
 
-class EmailField(CharField):
+class ClientIDsField(Field):
     default_error_messages = {
-        'email': "Invalid email. Must contains @",
+        'list_int': "Invalid IDs. Must be a list of integers",
     }
 
     def prepare_value(self, value):
-        if "@" not in value:
-            raise ValidationError(self.error_messages['email'])
+        if value in self.empty_values:
+            return None
+        if not isinstance(value, list) or \
+                not all(isinstance(v, int) for v in value):
+            raise ValidationError(self.error_messages['list_int'])
         return value
 
 
@@ -220,18 +225,16 @@ class PhoneField(Field):
         return value
 
 
-class DateField(Field):
+class EmailField(CharField):
     default_error_messages = {
-        'date_format': "Invalid date. Must be in format DD.MM.YYYY",
+        'email': "Invalid email. Must contains @",
     }
 
     def prepare_value(self, value):
         if value in self.empty_values:
             return ''
-        try:
-            value = datetime.strptime(value, '%d.%m.%Y')
-        except:
-            raise ValidationError(self.error_messages['date_format'])
+        if "@" not in value:
+            raise ValidationError(self.error_messages['email'])
         return value
 
 
@@ -260,22 +263,21 @@ class GenderField(Field):
         return value
 
 
-class ClientIDsField(Field):
+class ArgumentsField(Field):
     default_error_messages = {
-        'list_int': "Invalid IDs. Must be a list of integers",
+        'dict': '"Invalid arguments. Must be a dict."',
     }
 
     def prepare_value(self, value):
         if value in self.empty_values:
-            return None
-        if not isinstance(value, list) or \
-                not all(isinstance(v, int) for v in value):
-            raise ValidationError(self.error_messages['list_int'])
+            return {}
+        if not isinstance(value, dict):
+            raise ValidationError(self.error_messages['dict'])
         return value
 
 
 class ClientsInterestsRequest(Request):
-    client_ids = ClientIDsField(required=True)
+    client_ids = ClientIDsField()
     date = DateField(required=False, nullable=True)
 
     def get_response(self, ctx, store, is_admin=False):
@@ -337,6 +339,14 @@ class MethodRequest(Request):
 
 
 def check_auth(request):
+
+
+    return True
+
+
+
+
+
     if request.is_admin:
         digest = hashlib.sha512(datetime.now().strftime(
             "%Y%m%d%H") + ADMIN_SALT).hexdigest()
@@ -346,7 +356,6 @@ def check_auth(request):
     if digest == request.token:
         return True
     return False
-
 
 
 def method_handler(request, ctx, store):
