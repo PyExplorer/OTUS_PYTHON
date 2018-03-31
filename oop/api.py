@@ -339,14 +339,6 @@ class MethodRequest(Request):
 
 
 def check_auth(request):
-
-
-    return True
-
-
-
-
-
     if request.is_admin:
         digest = hashlib.sha512(datetime.now().strftime(
             "%Y%m%d%H") + ADMIN_SALT).hexdigest()
