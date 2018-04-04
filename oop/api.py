@@ -13,6 +13,8 @@ import six
 from dateutil.relativedelta import relativedelta
 
 from scoring import get_interests, get_score
+from store import Store
+
 
 SALT = "Otus"
 ADMIN_LOGIN = "admin"
@@ -376,7 +378,7 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
     router = {
         "method": method_handler
     }
-    store = None
+    store = Store()
 
     def get_request_id(self, headers):
         return headers.get('HTTP_X_REQUEST_ID', uuid.uuid4().hex)
