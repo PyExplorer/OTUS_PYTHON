@@ -35,6 +35,22 @@ def try_reconnect(func):
     return wrapper
 
 
+def try_reconnect_with_exception(func):
+    attempts = 3
+    delay = 1
+
+    def wrapper(*args, **kwargs):
+        for attempt in range(attempts):
+            try:
+                return func(*args, **kwargs)
+            except Exception:
+                time.sleep(delay * attempt)
+                args[0].connect()
+                continue
+        raise Exception
+    return wrapper
+
+
 class Store(object):
     def __init__(self):
         self.server = ''
@@ -53,8 +69,9 @@ class Store(object):
     @with_reconnect
     def connect(self):
         self.server = tarantool.connection.Connection(
-            host="localhost", port=3301
+            host="tarantool", port=3301
         )
+
         self.scoring_space = self.server.space('scoring')
         self.interests_space = self.server.space('interests')
 
@@ -75,22 +92,22 @@ class Store(object):
         except tarantool.error.DatabaseError:
             pass
 
-    @try_reconnect
+    @try_reconnect_with_exception
     def get(self, cid):
         try:
             record = self.interests_space.select(cid)
             if record:
                 return json.dumps({cid: record[0][1]})
         except:
-            pass
+            raise Exception
 
     def set_init_data(self):
         try:
             self._clean_base()
             self.scoring_space.insert((
-                'uid:ff04603735f81bd3085e47b0e1f98857',
-                 10.0,
-                 time.time() + 10
+                'uid:8a82ea01ffe65005c3660d227e1fb44e',
+                10.0,
+                time.time() + 10
             ))
             self.interests_space.insert(('i:1', ['auto', 'books']))
             self.interests_space.insert(('i:2', ['garden', 'birds']))

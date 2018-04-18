@@ -1,0 +1,11 @@
+# Using official python runtime base image
+FROM python:2.7-alpine
+
+WORKDIR /opp
+
+ADD requirements.txt /oop/requirements.txt
+RUN pip install -r /oop/requirements.txt
+
+ADD . /oop
+
+EXPOSE 80

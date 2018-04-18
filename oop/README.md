@@ -64,5 +64,10 @@ to be continued...
 
 TESTS
 -----
+You can run test with docker-compose 
 
-Not yet
+$cd opp
+
+docker-compose up
+
+ 

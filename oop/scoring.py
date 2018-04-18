@@ -10,7 +10,7 @@ def get_score(store, phone, email, birthday=None, gender=None, first_name=None,
     key_parts = [
         first_name or "",
         last_name or "",
-        birthday.strftime("%Y%m%d") if birthday is not None else "",
+        birthday if birthday is not None else "",
     ]
     key = "uid:" + hashlib.md5("".join(key_parts)).hexdigest()
     # try get from cache,
@@ -32,5 +32,8 @@ def get_score(store, phone, email, birthday=None, gender=None, first_name=None,
 
 
 def get_interests(store, cid):
-    r = store.get("i:%s" % cid)
-    return json.loads(r) if r else []
+    try:
+        r = store.get("i:%s" % cid)
+        return json.loads(r) if r else []
+    except:
+        raise Exception("Store doesn\'t work")
