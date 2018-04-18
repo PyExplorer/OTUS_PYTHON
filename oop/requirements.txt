@@ -1,0 +1,7 @@
+funcsigs==1.0.2
+mock==2.0.0
+msgpack-python==0.5.6
+pbr==4.0.0
+python-dateutil==2.7.2
+six==1.11.0
+tarantool==0.6.2

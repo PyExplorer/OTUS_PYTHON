@@ -1,0 +1,17 @@
+version: '2'
+services:
+  tarantool:
+    image: tarantool/tarantool:1
+    volumes:
+    - ./tarantool:/opt/tarantool
+    ports:
+    - "3301:3301"
+    command: ['tarantool', '/opt/tarantool/start.lua']
+  opp:
+    image: python:2.7
+    build: .
+    depends_on:
+      - "tarantool"
+    command: ['python', '-m', 'unittest', 'discover']
+    volumes:
+     - .:/opp

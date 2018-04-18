@@ -315,11 +315,11 @@ class TestScoring(unittest.TestCase):
     # With server but without initial date
     @cases([
         {'phone': '79213132121',
-         'email': 'qw@qw', 'birthday': api.datetime(1954, 12, 12, 0, 0),
+         'email': 'qw@qw', 'birthday': '12.12.1980',
          'gender': 1, 'first_name': 'Ivan',
          'last_name': 'Ivanovich'
-         }
-        ])
+         },
+    ])
     def test_get_score(self, value):
         self.assertEqual(
             api.get_score(
@@ -336,16 +336,15 @@ class TestScoring(unittest.TestCase):
     # with server and with initial data
     @cases([
         {'phone': '79213132121',
-         'email': 'qw@qw', 'birthday': api.datetime(1954, 12, 12, 0, 0),
+         'email': 'qw@qw', 'birthday': '12.12.1954',
          'gender': 1, 'first_name': 'Ivan',
          'last_name': 'Ivanov', 'result': 5.0
          },
         {'phone': '',
-         'email': 'qw@qw', 'birthday': api.datetime(1954, 12, 12, 0, 0),
+         'email': 'qw@qw', 'birthday': '12.12.1954',
          'gender': 1, 'first_name': 'Ivan',
          'last_name': 'Ivanov', 'result': 3.5
          }
-
     ])
     def test_init_get_score(self, value):
         self.store.set_init_data()
@@ -376,6 +375,7 @@ class TestScoring(unittest.TestCase):
                 )
 
 
+# @unittest.skip("Skip TestInterests")
 class TestInterests(unittest.TestCase):
     def setUp(self):
         self.store = api.MainHTTPHandler.store
@@ -397,13 +397,11 @@ class TestInterests(unittest.TestCase):
             )
         else:
             with self.assertRaises(Exception):
-                self.assertEqual(
-                    api.get_interests(
-                        self.store,
-                        value.get('cid')
-                    ),
-                    value.get('result')
-                )
+                api.get_interests(
+                    self.store,
+                    value.get('cid')
+                ),
+                value.get('result')
 
 
 if __name__ == "__main__":
