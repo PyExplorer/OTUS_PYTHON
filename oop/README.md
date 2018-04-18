@@ -19,8 +19,7 @@ INSTALLATION
 REQUIREMENTS
 --------
 The minimum requirement is python 2.7
-
-No external packages are needed
+Additional requirements in requirements.txt
 
 QUICK START
 -------
